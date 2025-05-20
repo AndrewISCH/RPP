@@ -35,12 +35,11 @@ int main(int argc, char** argv) {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-    long long int total_samples = 1e8;
+    long long int total_samples = 2e8;
     long long int local_samples = total_samples / size;
 
-    std::mt19937 gen(rank + time(NULL));
+    std::mt19937 gen(rank + 1234);
 
-    // Замір часу
     double start_time = MPI_Wtime();
 
     double start1 = MPI_Wtime();

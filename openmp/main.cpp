@@ -2,31 +2,23 @@
 #include <iostream>
 #include <random>
 #include <cmath>
-#include <vector>
-
-std::uniform_real_distribution<double> global_dist(0.0, 1.0);
-
-double generate_value(std::mt19937& gen) {
-    return global_dist(gen);
-}
 
 double method_points(long long samples) {
     long long inside_count = 0;
 
-    #pragma omp parallel
+    #pragma omp parallel reduction(+:inside_count)
     {
-        std::mt19937 gen(omp_get_thread_num() + time(NULL));
-        long long local_count = 0;
+        std::mt19937 gen(1234 + omp_get_thread_num());
+        std::uniform_real_distribution<double> dist(0.0, 1.0);
 
         #pragma omp for
         for (long long i = 0; i < samples; ++i) {
-            double x = generate_value(gen);
-            double y = generate_value(gen);
-            if (x * x + y * y <= 1.0) local_count++;
+            double x = dist(gen);
+            double y = dist(gen);
+            if (x * x + y * y <= 1.0) {
+                inside_count++;
+            }
         }
-
-        #pragma omp atomic
-        inside_count += local_count;
     }
 
     return 4.0 * inside_count / samples;
@@ -35,19 +27,16 @@ double method_points(long long samples) {
 double method_integral(long long samples) {
     double sum = 0.0;
 
-    #pragma omp parallel
+    #pragma omp parallel reduction(+:sum)
     {
-        std::mt19937 gen(omp_get_thread_num() + time(NULL) + 100);
-        double local_sum = 0.0;
+        std::mt19937 gen(5678 + omp_get_thread_num());
+        std::uniform_real_distribution<double> dist(0.0, 1.0);
 
         #pragma omp for
         for (long long i = 0; i < samples; ++i) {
-            double x = generate_value(gen);
-            local_sum += 1.0 / (1.0 + x * x);
+            double x = dist(gen);
+            sum += 1.0 / (1.0 + x * x);
         }
-
-        #pragma omp atomic
-        sum += local_sum;
     }
 
     return 4.0 * sum / samples;
@@ -65,7 +54,7 @@ int main(int argc, char* argv[]) {
 
     omp_set_num_threads(num_threads);
 
-    long long total_samples = 1e8;
+    long long total_samples = 2e8;
 
     double start1 = omp_get_wtime();
     double pi_points = method_points(total_samples);
@@ -80,6 +69,7 @@ int main(int argc, char* argv[]) {
 
     std::cout << "Method 2 (integral):   PI = " << pi_integral
               << " (Time: " << (end2 - start2) << " sec)" << std::endl;
+
     std::cout << "[OpenMP] Total time " << (end2 - start1) << " sec" << std::endl;
 
     return 0;
